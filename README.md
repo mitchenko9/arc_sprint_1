@@ -87,8 +87,7 @@
 
 **Стартовая контекстная диаграмма монолита:**
 
-![Стартовая контекстная диаграмма монолита](https://raw.githubusercontent.com/mitchenko9/arc_sprint_1/warmhouse/diagrams/startContextDiagram.puml)
-
+![Стартовая контекстная диаграмма монолита](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/mitchenko9/arc_sprint_1/warmhouse/diagrams/context/startContextDiagram.puml)
 
 # Задание 2. Проектирование микросервисной архитектуры
 

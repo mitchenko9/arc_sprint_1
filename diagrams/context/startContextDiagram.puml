@@ -1,5 +1,5 @@
 @startuml
-!include templateContextC4.puml
+!include ../template/templateContextC4.puml
 
 title Контекстная диаграмма первоночального состоятия системы
 
