@@ -85,9 +85,9 @@
 
 ### 5. Визуализация контекста системы — диаграмма С4
 
-```markdown
-[Стартавая контекстна диаграмма ](diagrams/startContextDiagram.puml) монолита
-```
+**Стартовая контекстная диаграмма монолита:**
+
+![Стартовая контекстная диаграмма монолита](https://raw.githubusercontent.com/mitchenko9/arc_sprint_1/warmhouse/diagrams/startContextDiagram.puml)
 
 
 # Задание 2. Проектирование микросервисной архитектуры
