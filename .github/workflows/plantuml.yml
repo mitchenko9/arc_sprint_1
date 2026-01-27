@@ -4,55 +4,38 @@ on:
   push:
     branches:
       - warmhouse
-      - main
-    paths:
-      - 'diagrams/**/*.puml'
-      - '.github/workflows/plantuml.yml'
   pull_request:
     branches:
       - warmhouse
-      - main
-    paths:
-      - 'diagrams/**/*.puml'
-  workflow_dispatch: # Позволяет запускать вручную
 
 jobs:
   generate-diagrams:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # Необходимо для коммита изменений
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v2
+
+    - name: Set up Java
+      uses: actions/setup-java@v2
       with:
-        fetch-depth: 0 # Необходимо для работы с git
+        java-version: '11'
 
-    - name: Generate PlantUML Diagrams
+    - name: Install PlantUML
+      run: sudo apt-get install plantuml
+
+    - name: Generate Diagrams
       run: |
-        # Используем Docker для генерации диаграмм (более надежно, чем установка через apt-get)
-        docker run --rm -v "$PWD":/work plantuml/plantuml:latest \
-          -tpng \
-          -o /work/diagrams \
-          diagrams/context/*.puml \
-          diagrams/container/*.puml 2>/dev/null || true \
-          diagrams/component/*.puml 2>/dev/null || true \
-          diagrams/code/*.puml 2>/dev/null || true
+        plantuml diagrams/context/*.puml
+        plantuml diagrams/container/*.puml
+        plantuml diagrams/component/*.puml
+        plantuml diagrams/code/*.puml
 
-    - name: Check for generated files
-      id: check-files
-      run: |
-        if [ -n "$(git status --porcelain diagrams/**/*.png 2>/dev/null)" ]; then
-          echo "has_changes=true" >> $GITHUB_OUTPUT
-        else
-          echo "has_changes=false" >> $GITHUB_OUTPUT
-        fi
-
-    - name: Commit and push diagrams
-      if: steps.check-files.outputs.has_changes == 'true'
+    - name: Commit Diagrams
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
         git add diagrams/**/*.png
-        git commit -m "chore: auto-generate PlantUML diagrams [skip ci]"
-        git push origin HEAD:${{ github.ref_name }}
+        git commit -m "Automated diagram generation"
+        git push origin main
+      if: success() 
