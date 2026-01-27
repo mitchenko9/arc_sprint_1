@@ -85,9 +85,10 @@
 
 ### 5. Визуализация контекста системы — диаграмма С4
 
-**Стартовая контекстная диаграмма монолита:**
-
-![Стартовая контекстная диаграмма монолита](diagrams/context/startContextDiagram.png)
+<details>
+<summary>Стартовая контекстная диаграмма монолита</summary>
+![](diagrams/context/startContextDiagram.png)
+</details>
 
 # Задание 2. Проектирование микросервисной архитектуры
 
@@ -95,15 +96,36 @@
 
 **Диаграмма контейнеров (Containers)**
 
-Добавьте диаграмму.
+<details>
+<summary>Контейнерная диаграмма будущей системы</summary>
+![](diagrams/container/containerDiagram.png)
+</details>
 
 **Диаграмма компонентов (Components)**
 
-Добавьте диаграмму для каждого из выделенных микросервисов.
+<details>
+<summary>Диаграммы компонентов будущей системы</summary>
+![](diagrams/component/automationComponent.png)
+
+![](diagrams/component/dataHubComponent.png)
+
+![](diagrams/component/deviceControlComponent.png)
+
+![](diagrams/component/deviceManagementComponent.png)
+</details>
 
 **Диаграмма кода (Code)**
 
-Добавьте одну диаграмму или несколько.
+<details>
+<summary>Диаграммы компонентов будущей системы</summary>
+![](diagrams/component/automationComponent.png)
+
+![](diagrams/component/dataHubComponent.png)
+
+![](diagrams/component/deviceControlComponent.png)
+
+![](diagrams/component/deviceManagementComponent.png)
+</details>
 
 # Задание 3. Разработка ER-диаграммы
 
