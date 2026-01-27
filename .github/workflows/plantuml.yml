@@ -16,7 +16,9 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Set up Java
       uses: actions/setup-java@v2
@@ -25,20 +27,32 @@ jobs:
         java-version: '11'
 
     - name: Install PlantUML
-      run: sudo apt-get install plantuml
+      run: sudo apt-get update && sudo apt-get install -y plantuml
 
     - name: Generate Diagrams
       run: |
-        plantuml diagrams/context/*.puml
-        plantuml diagrams/container/*.puml
-        plantuml diagrams/component/*.puml
-        plantuml diagrams/code/*.puml
+        find diagrams -name "*.puml" -type f -not -path "*/template/*" | while read puml_file; do
+          echo "Processing: $puml_file"
+          plantuml -tpng "$puml_file" || echo "Warning: Failed to process $puml_file"
+        done
+
+    - name: Check for generated files
+      id: check-files
+      run: |
+        if git status --porcelain | grep -q "diagrams/.*\.png"; then
+          echo "has_changes=true" >> $GITHUB_OUTPUT
+          echo "Found changes in PNG files"
+        else
+          echo "has_changes=false" >> $GITHUB_OUTPUT
+          echo "No changes in PNG files"
+        fi
+        git status --short
 
     - name: Commit Diagrams
+      if: steps.check-files.outputs.has_changes == 'true'
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
-        git add diagrams/**/*.png
-        git commit -m "Automated diagram generation"
-        git push origin main
-      if: success() 
+        find diagrams -name "*.png" -type f -exec git add {} \;
+        git commit -m "chore: auto-generate PlantUML diagrams [skip ci]"
+        git push origin HEAD:${{ github.ref_name }} 
