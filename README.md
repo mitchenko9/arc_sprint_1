@@ -98,6 +98,7 @@
 
 <details>
 <summary>Контейнерная диаграмма будущей системы</summary>
+
 ![](diagrams/container/containerDiagram.png)
 </details>
 
@@ -105,6 +106,7 @@
 
 <details>
 <summary>Диаграммы компонентов будущей системы</summary>
+
 ![](diagrams/component/automationComponent.png)
 
 ![](diagrams/component/dataHubComponent.png)
@@ -118,13 +120,14 @@
 
 <details>
 <summary>Диаграммы компонентов будущей системы</summary>
-![](diagrams/component/automationComponent.png)
 
-![](diagrams/component/dataHubComponent.png)
+![ ](diagrams/code/automationSequence.png)
 
-![](diagrams/component/deviceControlComponent.png)
+![](diagrams/code/deviceControlSequence.png)
 
-![](diagrams/component/deviceManagementComponent.png)
+![](diagrams/code/protocolAdapterClass.png)
+
+![](diagrams/code/ruleEvaluatorClass.png)
 </details>
 
 # Задание 3. Разработка ER-диаграммы
