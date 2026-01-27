@@ -11,6 +11,8 @@ on:
 jobs:
   generate-diagrams:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
     - name: Checkout repository
@@ -19,6 +21,7 @@ jobs:
     - name: Set up Java
       uses: actions/setup-java@v2
       with:
+        distribution: 'temurin'
         java-version: '11'
 
     - name: Install PlantUML
