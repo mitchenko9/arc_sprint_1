@@ -1,0 +1,38 @@
+@startuml
+!include ../template/templateComponentC4.puml
+
+title Диаграмма компонентов: Сервис управления устройствами
+
+Container_Boundary(deviceControl, "Сервис управления устройствами") {
+    Component(controlAPI, "Device Control API", "REST API", "Предоставляет HTTP endpoints для отправки команд управления: вкл/выкл, настройка параметров")
+    Component(commandHandler, "Command Handler", "Business Logic", "Обрабатывает команды управления: валидация, проверка прав, формирование команд")
+    Component(deviceStateManager, "Device State Manager", "State Management", "Управление состоянием устройств: текущий статус, последние команды, история изменений")
+    Component(protocolAdapter, "Protocol Adapter", "Protocol Translation", "Адаптация команд под различные протоколы устройств (MQTT, HTTP, Zigbee, Z-Wave)")
+    Component(commandQueue, "Command Queue", "Message Queue", "Очередь команд для асинхронной обработки и гарантии доставки")
+    Component(deviceConnector, "Device Connector", "Communication", "Установка соединения и отправка команд на физические устройства")
+    Component(retryManager, "Retry Manager", "Resilience", "Управление повторными попытками при сбоях связи с устройствами")
+}
+
+Container_Ext(apiGateway, "API-шлюз", "Единая точка входа")
+Container_Ext(deviceManagement, "Сервис менеджмента устройств", "Метаданные устройств")
+Container_Ext(automation, "Сервис автоматизации", "Выполнение сценариев")
+Container_Ext(signalBroker, "Брокер событий", "Асинхронная коммуникация")
+Container_Ext(partnerDevices, "Устройства партнеров", "Физические устройства")
+
+Rel(apiGateway, controlAPI, "HTTP/REST", "Запросы на управление устройствами")
+
+Rel(controlAPI, commandHandler, "Вызов методов", "Передача команд на обработку")
+Rel(commandHandler, deviceStateManager, "Проверка состояния", "Получение текущего состояния устройства")
+Rel(commandHandler, deviceManagement, "HTTP/REST", "Проверка существования устройства и прав доступа")
+Rel(commandHandler, protocolAdapter, "Адаптация команды", "Преобразование команды под протокол устройства")
+Rel(commandHandler, commandQueue, "Добавление в очередь", "Постановка команды в очередь для обработки")
+Rel(commandQueue, deviceConnector, "Обработка команды", "Извлечение и обработка команд из очереди")
+Rel(deviceConnector, retryManager, "Обработка ошибок", "Повторные попытки при сбоях")
+Rel(deviceConnector, protocolAdapter, "Получение протокола", "Получение адаптированной команды")
+Rel(deviceConnector, partnerDevices, "MQTT/HTTP/Zigbee", "Отправка команд на физические устройства")
+Rel(deviceStateManager, signalBroker, "Publish events", "Публикация событий: device.command.sent, device.state.changed")
+
+Rel(automation, commandHandler, "HTTP/REST", "Отправка команд в рамках выполнения сценариев")
+Rel(signalBroker, commandHandler, "Subscribe events", "Подписка на события для реактивного управления")
+
+@enduml

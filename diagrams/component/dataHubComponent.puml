@@ -1,0 +1,39 @@
+@startuml
+!include ../template/templateComponentC4.puml
+
+title Диаграмма компонентов: Сервис данных устройств (Data Hub)
+
+Container_Boundary(dataHub, "Сервис данных устройств") {
+    Component(dataAPI, "Data Hub API", "REST API", "Предоставляет HTTP endpoints для запроса телеметрии: по устройству, по времени, агрегации")
+    Component(telemetryCollector, "Telemetry Collector", "Data Collection", "Сбор телеметрии от устройств: получение данных из различных источников")
+    Component(dataProcessor, "Data Processor", "Data Processing", "Обработка данных: фильтрация, агрегация, вычисление метрик")
+    Component(dataRepository, "Data Repository", "Data Access", "Абстракция для работы с хранилищем данных")
+    Component(timeSeriesDB, "Time Series Storage", "Time Series DB", "Оптимизированное хранилище временных рядов для телеметрии")
+    Component(dataCache, "Data Cache", "Cache Layer", "Кэширование часто запрашиваемых данных для быстрого доступа")
+    Component(aggregationEngine, "Aggregation Engine", "Analytics", "Вычисление агрегированных метрик: средние, максимумы, минимумы за период")
+}
+
+Container_Ext(apiGateway, "API-шлюз", "Единая точка входа")
+Container_Ext(signalBroker, "Брокер событий", "Асинхронная коммуникация")
+Container_Ext(temperatureService, "Внешний сервис температуры", "Внешний источник данных")
+Container_Ext(integration, "Сервис интеграции", "Интеграция с устройствами партнеров")
+Container_Ext(automation, "Сервис автоматизации", "Использование данных для сценариев")
+
+Rel(apiGateway, dataAPI, "HTTP/REST", "Запросы телеметрии и аналитики")
+
+Rel(dataAPI, dataRepository, "Запрос данных", "Получение данных из хранилища")
+Rel(dataAPI, dataCache, "Проверка кэша", "Быстрый доступ к кэшированным данным")
+Rel(dataAPI, aggregationEngine, "Вычисление метрик", "Запрос агрегированных данных")
+Rel(telemetryCollector, signalBroker, "Subscribe events", "Подписка на события телеметрии от устройств")
+Rel(telemetryCollector, temperatureService, "HTTP/REST", "Получение данных о температуре в реальном времени")
+Rel(telemetryCollector, integration, "HTTP/REST", "Получение телеметрии от устройств партнеров")
+Rel(telemetryCollector, dataProcessor, "Обработка данных", "Передача сырых данных на обработку")
+Rel(dataProcessor, dataRepository, "Сохранение данных", "Сохранение обработанных данных")
+Rel(dataRepository, timeSeriesDB, "Запросы", "Чтение и запись временных рядов")
+Rel(dataCache, timeSeriesDB, "Кэширование", "Кэширование данных из БД")
+Rel(aggregationEngine, timeSeriesDB, "Агрегация", "Вычисление метрик из временных рядов")
+
+Rel(automation, dataAPI, "HTTP/REST", "Запрос данных для условий сценариев")
+Rel(signalBroker, telemetryCollector, "Publish events", "Доставка событий телеметрии")
+
+@enduml

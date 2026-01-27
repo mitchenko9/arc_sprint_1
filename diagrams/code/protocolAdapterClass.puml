@@ -1,0 +1,115 @@
+@startuml
+title Protocol Adapter - Адаптация протоколов устройств
+
+package "Protocol Adapter" {
+    abstract class ProtocolAdapter {
+        +adaptCommand(deviceInfo: DeviceInfo, command: Command): ProtocolCommand
+        +validateCommand(command: Command, deviceType: DeviceType): boolean
+        {abstract} +buildPayload(command: Command): Map<String, Object>
+        {abstract} +getEndpoint(deviceInfo: DeviceInfo): String
+        {abstract} +getProtocolType(): ProtocolType
+    }
+    
+    class MQTTAdapter {
+        +buildPayload(command: Command): Map<String, Object>
+        +getEndpoint(deviceInfo: DeviceInfo): String
+        +getProtocolType(): ProtocolType
+        -buildMQTTTopic(deviceId: String, action: String): String
+        -buildMQTTPayload(command: Command): String
+    }
+    
+    class HTTPAdapter {
+        +buildPayload(command: Command): Map<String, Object>
+        +getEndpoint(deviceInfo: DeviceInfo): String
+        +getProtocolType(): ProtocolType
+        -buildHTTPRequest(command: Command): HttpRequest
+        -getBaseURL(deviceInfo: DeviceInfo): String
+    }
+    
+    class ZigbeeAdapter {
+        +buildPayload(command: Command): Map<String, Object>
+        +getEndpoint(deviceInfo: DeviceInfo): String
+        +getProtocolType(): ProtocolType
+        -buildZigbeeCluster(command: Command): ZigbeeCluster
+        -getZigbeeAddress(deviceInfo: DeviceInfo): String
+    }
+    
+    class ZWaveAdapter {
+        +buildPayload(command: Command): Map<String, Object>
+        +getEndpoint(deviceInfo: DeviceInfo): String
+        +getProtocolType(): ProtocolType
+        -buildZWaveCommand(command: Command): ZWaveCommand
+        -getZWaveNodeId(deviceInfo: DeviceInfo): int
+    }
+    
+    class ProtocolAdapterFactory {
+        +createAdapter(protocolType: ProtocolType): ProtocolAdapter
+        -adapters: Map<ProtocolType, ProtocolAdapter>
+    }
+    
+    class DeviceInfo {
+        +id: String
+        +type: DeviceType
+        +protocol: ProtocolType
+        +ownerId: String
+        +metadata: Map<String, String>
+        +getProtocolConfig(): ProtocolConfig
+    }
+    
+    class Command {
+        +action: String
+        +parameters: Map<String, Object>
+        +timestamp: DateTime
+        +priority: int
+    }
+    
+    class ProtocolCommand {
+        +protocol: ProtocolType
+        +endpoint: String
+        +payload: Map<String, Object>
+        +headers: Map<String, String>
+        +timeout: int
+    }
+    
+    enum ProtocolType {
+        MQTT
+        HTTP
+        ZIGBEE
+        ZWAVE
+        COAP
+    }
+    
+    enum DeviceType {
+        HEATING
+        LIGHTING
+        GATE
+        SENSOR
+        CAMERA
+    }
+}
+
+ProtocolAdapterFactory --> ProtocolAdapter : creates
+ProtocolAdapter <|-- MQTTAdapter
+ProtocolAdapter <|-- HTTPAdapter
+ProtocolAdapter <|-- ZigbeeAdapter
+ProtocolAdapter <|-- ZWaveAdapter
+
+ProtocolAdapter ..> DeviceInfo : uses
+ProtocolAdapter ..> Command : uses
+ProtocolAdapter ..> ProtocolCommand : creates
+ProtocolAdapter ..> ProtocolType : uses
+DeviceInfo ..> ProtocolType : uses
+DeviceInfo ..> DeviceType : uses
+
+note right of ProtocolAdapter
+    Базовый класс для адаптации командыпод различные протоколы устройств.
+    Реализует паттерн Strategy.
+end note
+
+note right of ProtocolAdapterFactory
+    Фабрика для создания адаптеров
+    по типу протокола устройства.
+    Использует паттерн Factory.
+end note
+
+@enduml

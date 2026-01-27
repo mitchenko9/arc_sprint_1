@@ -1,0 +1,123 @@
+@startuml
+title Диаграмма последовательности: Обработка команды управления устройством
+
+actor "Пользователь" as User
+participant "API Gateway" as Gateway
+participant "Device Control API" as ControlAPI
+participant "Command Handler" as Handler
+participant "Device State Manager" as StateManager
+participant "Device Management\nService" as DeviceMgmt
+participant "Protocol Adapter" as ProtocolAdapter
+participant "Command Queue" as Queue
+participant "Device Connector" as Connector
+participant "Retry Manager" as RetryManager
+participant "Физическое\nустройство" as Device
+participant "Брокер событий" as Broker
+
+User -> Gateway: POST /api/v1/devices/{id}/command\n{action: "turn_on", params: {...}}
+activate Gateway
+
+Gateway -> ControlAPI: HTTP Request
+activate ControlAPI
+
+ControlAPI -> Handler: handleCommand(deviceId, command)
+activate Handler
+
+Handler -> DeviceMgmt: validateDevice(deviceId, userId)
+activate DeviceMgmt
+DeviceMgmt --> Handler: DeviceInfo {id, type, protocol, owner}
+deactivate DeviceMgmt
+
+alt Устройство не найдено или нет прав
+    Handler --> ControlAPI: Error: DeviceNotFound / Unauthorized
+    ControlAPI --> Gateway: HTTP 404 / 403
+    Gateway --> User: Error Response
+    deactivate Handler
+    deactivate ControlAPI
+    deactivate Gateway
+else Устройство найдено и есть права
+    Handler -> StateManager: getCurrentState(deviceId)
+    activate StateManager
+    StateManager --> Handler: DeviceState {status, lastCommand, timestamp}
+    deactivate StateManager
+    
+    Handler -> ProtocolAdapter: adaptCommand(deviceInfo, command)
+    activate ProtocolAdapter
+    ProtocolAdapter --> Handler: ProtocolCommand {protocol, payload, endpoint}
+    deactivate ProtocolAdapter
+    
+    Handler -> Queue: enqueueCommand(deviceId, protocolCommand)
+    activate Queue
+    Queue --> Handler: Command queued
+    deactivate Queue
+    
+    Handler -> StateManager: updateState(deviceId, "pending")
+    activate StateManager
+    StateManager --> Handler: State updated
+    deactivate StateManager
+    
+    Handler --> ControlAPI: Command accepted
+    deactivate Handler
+    
+    ControlAPI --> Gateway: HTTP 202 Accepted
+    deactivate ControlAPI
+    Gateway --> User: Command queued successfully
+    deactivate Gateway
+    
+    Queue -> Connector: processCommand(deviceId, protocolCommand)
+    activate Connector
+    
+    Connector -> RetryManager: executeWithRetry(deviceId, protocolCommand)
+    activate RetryManager
+    
+    loop До успешной доставки или исчерпания попыток
+        RetryManager -> Connector: sendCommand(protocolCommand)
+        Connector -> Device: Send command via protocol\n(MQTT/HTTP/Zigbee)
+        activate Device
+        
+        alt Команда успешно доставлена
+            Device --> Connector: Success response
+            deactivate Device
+            Connector --> RetryManager: Success
+            RetryManager --> Connector: Command delivered
+        else Ошибка связи
+            Device --> Connector: Error / Timeout
+            deactivate Device
+            Connector --> RetryManager: Error
+            RetryManager -> RetryManager: wait(retryDelay)
+            RetryManager -> RetryManager: incrementRetryCount()
+        end
+    end
+    
+    alt Команда доставлена успешно
+        RetryManager -> StateManager: updateState(deviceId, "executed")
+        activate StateManager
+        StateManager --> RetryManager: State updated
+        deactivate StateManager
+        
+        StateManager -> Broker: publish("device.command.sent", event)
+        activate Broker
+        Broker --> StateManager: Event published
+        deactivate Broker
+        
+        StateManager -> Broker: publish("device.state.changed", event)
+        activate Broker
+        Broker --> StateManager: Event published
+        deactivate Broker
+    else Превышено количество попыток
+        RetryManager -> StateManager: updateState(deviceId, "failed")
+        activate StateManager
+        StateManager --> RetryManager: State updated
+        deactivate StateManager
+        
+        StateManager -> Broker: publish("device.command.failed", event)
+        activate Broker
+        Broker --> StateManager: Event published
+        deactivate Broker
+    end
+    
+    deactivate RetryManager
+    deactivate Connector
+end
+
+@enduml
