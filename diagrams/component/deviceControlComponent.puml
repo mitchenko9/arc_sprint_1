@@ -23,7 +23,7 @@ Rel(apiGateway, controlAPI, "HTTP/REST", "Запросы на управлени
 
 Rel(controlAPI, commandHandler, "Вызов методов", "Передача команд на обработку")
 Rel(commandHandler, deviceStateManager, "Проверка состояния", "Получение текущего состояния устройства")
-Rel(commandHandler, deviceManagement, "HTTP/REST", "Проверка существования устройства и прав доступа")
+Rel(commandHandler, deviceManagement, "HTTP/REST", "Проверка существования устройства и прав доступа (в т.ч. по членству в семейной группе)")
 Rel(commandHandler, protocolAdapter, "Адаптация команды", "Преобразование команды под протокол устройства")
 Rel(commandHandler, commandQueue, "Добавление в очередь", "Постановка команды в очередь для обработки")
 Rel(commandQueue, deviceConnector, "Обработка команды", "Извлечение и обработка команд из очереди")
