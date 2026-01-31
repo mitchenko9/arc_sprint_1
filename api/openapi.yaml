@@ -1,0 +1,531 @@
+openapi: 3.0.3
+info:
+  title: Экосистема умного дома API
+  description: |
+    REST API для взаимодействия микросервисов экосистемы умного дома.
+    Включает эндпоинты сервисов управления пользователями и группами, менеджмента устройств,
+    управления устройствами и сервиса данных (телеметрия).
+  version: 1.0.0
+  contact:
+    name: Smart Home Platform
+
+servers:
+  - url: https://api.smarthome.example/v1
+    description: Production
+  - url: http://localhost:8080/api/v1
+    description: Local (API Gateway)
+
+tags:
+  - name: User Management
+    description: Доступ к домам по членству в семейных группах
+  - name: Device Management
+    description: Регистрация и получение информации об устройствах
+  - name: Device Control
+    description: Отправка команд устройствам
+  - name: Data Hub
+    description: Телеметрия устройств
+
+paths:
+  /users/{userId}/houses:
+    get:
+      tags:
+        - User Management
+      summary: Список домов, доступных пользователю
+      description: |
+        Возвращает идентификаторы домов, к которым пользователь имеет доступ через членство в семейных группах.
+        Вызывается сервисом Device Management для проверки доступа перед возвратом списка устройств.
+      operationId: getAccessibleHouses
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Идентификатор пользователя (из токена/сессии)
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        "200":
+          description: Успешно. Список house_id, к которым у пользователя есть доступ.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessibleHousesResponse"
+              examples:
+                twoHouses:
+                  summary: Пользователь имеет доступ к двум домам
+                  value:
+                    user_id: "550e8400-e29b-41d4-a716-446655440000"
+                    house_ids:
+                      - "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+                      - "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Пользователь не найден
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /houses/{houseId}/devices:
+    get:
+      tags:
+        - Device Management
+      summary: Список устройств в доме
+      description: |
+        Возвращает все устройства, принадлежащие указанному дому.
+        Вызывающий сервис (API Gateway, Device Control) должен предварительно проверить,
+        что пользователь имеет доступ к дому (через User Management).
+      operationId: getDevicesByHouse
+      parameters:
+        - name: houseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+        - name: userId
+          in: header
+          required: true
+          description: Идентификатор пользователя (для проверки доступа к дому)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Список устройств дома
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceListResponse"
+              example:
+                house_id: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+                devices:
+                  - device_id: "b2c3d4e5-f6a7-8901-bcde-f23456789012"
+                    name: "Термостат гостиная"
+                    device_type_id: "d1e2f3a4-b5c6-4789-0def-123456789abc"
+                    status: "online"
+                    location: "Гостиная"
+                  - device_id: "c3d4e5f6-a7b8-9012-cdef-345678901234"
+                    name: "Свет кухня"
+                    device_type_id: "e2f3a4b5-c6d7-4890-def1-23456789abcd"
+                    status: "online"
+                    location: "Кухня"
+        "403":
+          description: Нет доступа к данному дому (пользователь не в группе)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Дом не найден
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /devices/{deviceId}:
+    get:
+      tags:
+        - Device Management
+      summary: Информация об устройстве
+      description: |
+        Возвращает метаданные устройства по ID. Используется Device Control перед отправкой команды
+        и клиентом для отображения деталей устройства. Доступ разрешён только если пользователь
+        имеет доступ к дому, которому принадлежит устройство.
+      operationId: getDeviceById
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: userId
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Устройство найдено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Device"
+              example:
+                device_id: "b2c3d4e5-f6a7-8901-bcde-f23456789012"
+                house_id: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+                device_type_id: "d1e2f3a4-b5c6-4789-0def-123456789abc"
+                serial_number: "TH-2024-001"
+                name: "Термостат гостиная"
+                status: "online"
+                location: "Гостиная"
+                settings: {}
+                registered_at: "2024-01-15T10:00:00Z"
+        "403":
+          description: Нет доступа к устройству
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Устройство не найдено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "device_not_found"
+                message: "Устройство с указанным ID не найдено"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /devices/{deviceId}/commands:
+    post:
+      tags:
+        - Device Control
+      summary: Отправить команду устройству
+      description: |
+        Ставит команду в очередь на выполнение. Device Control проверяет существование устройства
+        и права доступа через Device Management, затем отправляет команду на физическое устройство
+        (синхронно или через брокер). Ответ 202 — команда принята в обработку.
+      operationId: sendDeviceCommand
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: userId
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceCommandRequest"
+            examples:
+              turnOn:
+                summary: Включить устройство
+                value:
+                  action: "turn_on"
+                  parameters: {}
+              setTemperature:
+                summary: Установить температуру
+                value:
+                  action: "set_temperature"
+                  parameters:
+                    value: 22.5
+                    unit: "celsius"
+              openGate:
+                summary: Открыть ворота
+                value:
+                  action: "open"
+                  parameters: {}
+      responses:
+        "202":
+          description: Команда принята в обработку
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceCommandResponse"
+              example:
+                command_id: "cmd-550e8400-e29b-41d4-a716-446655440000"
+                device_id: "b2c3d4e5-f6a7-8901-bcde-f23456789012"
+                status: "accepted"
+                message: "Команда поставлена в очередь"
+        "400":
+          description: Некорректное тело запроса или неподдерживаемая команда
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Нет доступа к устройству
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Устройство не найдено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /telemetry/devices/{deviceId}:
+    get:
+      tags:
+        - Data Hub
+      summary: Телеметрия устройства
+      description: |
+        Возвращает записи телеметрии для устройства за указанный период.
+        Используется клиентом для графиков и сервисом Automation для оценки условий сценариев.
+      operationId: getDeviceTelemetry
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          required: true
+          description: Начало периода (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+            example: "2024-01-20T00:00:00Z"
+        - name: to
+          in: query
+          required: true
+          description: Конец периода (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+            example: "2024-01-20T23:59:59Z"
+        - name: metric
+          in: query
+          description: Фильтр по имени метрики (например, temperature, humidity)
+          schema:
+            type: string
+            example: "temperature"
+        - name: limit
+          in: query
+          description: Максимальное количество записей
+          schema:
+            type: integer
+            default: 100
+            maximum: 1000
+        - name: userId
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Список записей телеметрии
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelemetryResponse"
+              example:
+                device_id: "b2c3d4e5-f6a7-8901-bcde-f23456789012"
+                from: "2024-01-20T00:00:00Z"
+                to: "2024-01-20T23:59:59Z"
+                metric: "temperature"
+                data:
+                  - recorded_at: "2024-01-20T12:00:00Z"
+                    value: 22.1
+                    unit: "celsius"
+                  - recorded_at: "2024-01-20T12:15:00Z"
+                    value: 22.3
+                    unit: "celsius"
+        "403":
+          description: Нет доступа к устройству
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Устройство не найдено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  schemas:
+    AccessibleHousesResponse:
+      type: object
+      required:
+        - user_id
+        - house_ids
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        house_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    Device:
+      type: object
+      required:
+        - device_id
+        - house_id
+        - device_type_id
+        - name
+        - status
+      properties:
+        device_id:
+          type: string
+          format: uuid
+        house_id:
+          type: string
+          format: uuid
+        device_type_id:
+          type: string
+          format: uuid
+        serial_number:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum: [online, offline, error]
+        location:
+          type: string
+        settings:
+          type: object
+        registered_at:
+          type: string
+          format: date-time
+
+    DeviceListItem:
+      type: object
+      properties:
+        device_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        device_type_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [online, offline, error]
+        location:
+          type: string
+
+    DeviceListResponse:
+      type: object
+      required:
+        - house_id
+        - devices
+      properties:
+        house_id:
+          type: string
+          format: uuid
+        devices:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceListItem"
+
+    DeviceCommandRequest:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          description: Тип команды (turn_on, turn_off, set_temperature, open, close и т.д.)
+          example: "turn_on"
+        parameters:
+          type: object
+          description: Параметры команды (например, value, unit)
+          additionalProperties: true
+
+    DeviceCommandResponse:
+      type: object
+      required:
+        - command_id
+        - device_id
+        - status
+      properties:
+        command_id:
+          type: string
+          format: uuid
+        device_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [accepted, rejected]
+        message:
+          type: string
+
+    TelemetryRecord:
+      type: object
+      properties:
+        recorded_at:
+          type: string
+          format: date-time
+        value:
+          oneOf:
+            - type: number
+            - type: string
+        unit:
+          type: string
+
+    TelemetryResponse:
+      type: object
+      required:
+        - device_id
+        - data
+      properties:
+        device_id:
+          type: string
+          format: uuid
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        metric:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/TelemetryRecord"
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+
+  responses:
+    Unauthorized:
+      description: Не авторизован (отсутствует или невалидный токен)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: "unauthorized"
+            message: "Требуется аутентификация"
+    InternalError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: "internal_error"
+            message: "Внутренняя ошибка сервера"
