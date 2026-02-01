@@ -32,6 +32,13 @@ func main() {
 	temperatureService := services.NewTemperatureService(temperatureAPIURL)
 	log.Printf("Temperature service initialized with API URL: %s\n", temperatureAPIURL)
 
+	// Initialize Data Hub service (optional; empty URL disables telemetry push)
+	dataHubURL := getEnv("DATA_HUB_URL", "")
+	dataHubService := services.NewDataHubService(dataHubURL)
+	if dataHubURL != "" {
+		log.Printf("Data Hub service initialized with URL: %s\n", dataHubURL)
+	}
+
 	// Initialize router
 	router := gin.Default()
 
@@ -46,7 +53,7 @@ func main() {
 	apiRoutes := router.Group("/api/v1")
 
 	// Register sensor routes
-	sensorHandler := handlers.NewSensorHandler(database, temperatureService)
+	sensorHandler := handlers.NewSensorHandler(database, temperatureService, dataHubService)
 	sensorHandler.RegisterRoutes(apiRoutes)
 
 	// Start server

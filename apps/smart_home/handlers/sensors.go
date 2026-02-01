@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"smarthome/db"
 	"smarthome/models"
@@ -18,13 +19,15 @@ import (
 type SensorHandler struct {
 	DB                 *db.DB
 	TemperatureService *services.TemperatureService
+	DataHubService     *services.DataHubService
 }
 
 // NewSensorHandler creates a new SensorHandler
-func NewSensorHandler(db *db.DB, temperatureService *services.TemperatureService) *SensorHandler {
+func NewSensorHandler(db *db.DB, temperatureService *services.TemperatureService, dataHubService *services.DataHubService) *SensorHandler {
 	return &SensorHandler{
 		DB:                 db,
 		TemperatureService: temperatureService,
+		DataHubService:     dataHubService,
 	}
 }
 
@@ -207,6 +210,13 @@ func (h *SensorHandler) UpdateSensorValue(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	if h.DataHubService != nil {
+		deviceID := services.SensorIDToDeviceUUID(id)
+		if err := h.DataHubService.PostTelemetry(deviceID, "value", request.Value, "C", time.Now()); err != nil {
+			log.Printf("Data Hub telemetry push failed for sensor %d: %v", id, err)
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Sensor value updated successfully"})

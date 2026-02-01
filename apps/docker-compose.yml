@@ -28,6 +28,38 @@ services:
     networks:
       - smarthome-network
 
+  device-management:
+    build:
+      context: ./device_management
+      dockerfile: Dockerfile
+    container_name: smarthome-device-management
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - PORT=8082
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/smarthome
+    ports:
+      - "8082:8082"
+    networks:
+      - smarthome-network
+
+  data-hub:
+    build:
+      context: ./data_hub
+      dockerfile: Dockerfile
+    container_name: smarthome-data-hub
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - PORT=8083
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/smarthome
+    ports:
+      - "8083:8083"
+    networks:
+      - smarthome-network
+
   app:
     build:
       context: ./smart_home
@@ -38,9 +70,15 @@ services:
         condition: service_healthy
       temperature-api:
         condition: service_started
+      device-management:
+        condition: service_started
+      data-hub:
+        condition: service_started
     environment:
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/smarthome
       - TEMPERATURE_API_URL=http://temperature-api:8081
+      - DEVICE_MANAGEMENT_URL=http://device-management:8082
+      - DATA_HUB_URL=http://data-hub:8083
     ports:
       - "8080:8080"
     restart: unless-stopped

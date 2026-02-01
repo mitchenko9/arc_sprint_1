@@ -1,5 +1,7 @@
 # Smart Home Sensor Management API
 
+Монолит (Go) и микросервисы: Device Management (Node.js), Data Hub (Python), Temperature API (Node.js).
+
 ## Prerequisites
 
 - Docker and Docker Compose
@@ -16,9 +18,9 @@ The easiest way to start the application is to use Docker Compose:
 
 This script will:
 
-1. Build and start the PostgreSQL and application containers
-2. Wait for the services to be ready
-3. Display information about how to access the API
+1. Build and start PostgreSQL, monolith, Temperature API, Device Management, and Data Hub
+2. Wait for PostgreSQL to be ready
+3. Display information about how to access the APIs
 
 Alternatively, you can run Docker Compose directly:
 
@@ -26,7 +28,15 @@ Alternatively, you can run Docker Compose directly:
 docker-compose up -d
 ```
 
-The API will be available at http://localhost:8080
+**Services:**
+
+| Service             | URL                     |
+|---------------------|-------------------------|
+| Monolith (API)      | http://localhost:8080   |
+| Temperature API     | http://localhost:8081   |
+| Device Management   | http://localhost:8082   |
+| Data Hub (telemetry)| http://localhost:8083   |
+
 
 ### Option 2: Manual setup
 
@@ -58,3 +68,18 @@ A Postman collection is provided for testing the API. Import the `smarthome-api.
 - `PUT /api/v1/sensors/:id` - Update a sensor
 - `DELETE /api/v1/sensors/:id` - Delete a sensor
 - `PATCH /api/v1/sensors/:id/value` - Update a sensor's value and status
+
+### Device Management (порт 8082)
+
+- `GET /api/v1/devices` - Список устройств
+- `GET /api/v1/devices/:id` - Устройство по ID
+- `GET /api/v1/houses/:houseId/devices` - Устройства по дому
+- `POST /api/v1/devices` - Создать устройство
+- `PUT /api/v1/devices/:id` - Обновить устройство
+- `DELETE /api/v1/devices/:id` - Удалить устройство
+
+### Data Hub (порт 8083)
+
+- `POST /api/v1/telemetry` - Отправить запись телеметрии
+- `POST /api/v1/telemetry/batch` - Пакет записей
+- `GET /api/v1/telemetry/devices/:deviceId?from=&to=&metric=&limit=` - Телеметрия устройства за период
