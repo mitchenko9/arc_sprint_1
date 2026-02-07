@@ -1,0 +1,156 @@
+@startuml
+title Rule Evaluator - Оценка условий сценариев
+
+package "Rule Evaluator" {
+    class RuleEvaluator {
+        +evaluateConditions(conditions: List<Condition>, context: EvaluationContext): EvaluationResult
+        +evaluateCondition(condition: Condition, context: EvaluationContext): boolean
+        -evaluateLogicalOperator(operator: LogicalOperator, operands: List<boolean>): boolean
+        -evaluateComparison(comparison: Comparison): boolean
+    }
+    
+    abstract class Condition {
+        +evaluate(context: EvaluationContext): boolean
+        {abstract} +getType(): ConditionType
+    }
+    
+    class DeviceDataCondition {
+        +deviceId: String
+        +metric: String
+        +operator: ComparisonOperator
+        +value: Object
+        +timeRange: TimeRange
+        +evaluate(context: EvaluationContext): boolean
+        +getType(): ConditionType
+    }
+    
+    class TimeCondition {
+        +timeOfDay: Time
+        +daysOfWeek: List<DayOfWeek>
+        +timezone: String
+        +evaluate(context: EvaluationContext): boolean
+        +getType(): ConditionType
+    }
+    
+    class EventCondition {
+        +eventType: String
+        +eventSource: String
+        +eventFilters: Map<String, Object>
+        +evaluate(context: EvaluationContext): boolean
+        +getType(): ConditionType
+    }
+    
+    class CompositeCondition {
+        +logicalOperator: LogicalOperator
+        +conditions: List<Condition>
+        +evaluate(context: EvaluationContext): boolean
+        +getType(): ConditionType
+    }
+    
+    class ComparisonOperator {
+        <<enumeration>>
+        EQUALS
+        NOT_EQUALS
+        GREATER_THAN
+        LESS_THAN
+        GREATER_OR_EQUAL
+        LESS_OR_EQUAL
+        CONTAINS
+        IN
+    }
+    
+    class LogicalOperator {
+        <<enumeration>>
+        AND
+        OR
+        NOT
+    }
+    
+    class ConditionType {
+        <<enumeration>>
+        DEVICE_DATA
+        TIME
+        EVENT
+        COMPOSITE
+    }
+    
+    class EvaluationContext {
+        +triggerEvent: Event
+        +deviceDataCache: Map<String, DeviceData>
+        +currentTime: DateTime
+        +getDeviceData(deviceId: String, metric: String): DeviceData
+        +getEventData(): Event
+    }
+    
+    class EvaluationResult {
+        +allConditionsMet: boolean
+        +conditionResults: Map<Condition, boolean>
+        +failedConditions: List<Condition>
+        +evaluationTime: DateTime
+    }
+    
+    class DeviceData {
+        +deviceId: String
+        +metric: String
+        +value: Object
+        +timestamp: DateTime
+        +unit: String
+    }
+    
+    class TimeRange {
+        +startTime: DateTime
+        +endTime: DateTime
+    }
+    
+    interface DataProvider {
+        +getDeviceData(deviceId: String, metric: String, timeRange: TimeRange): DeviceData
+    }
+    
+    class DataHubProvider {
+        +getDeviceData(deviceId: String, metric: String, timeRange: TimeRange): DeviceData
+        -httpClient: HttpClient
+        -dataHubUrl: String
+    }
+}
+
+RuleEvaluator --> Condition : evaluates
+RuleEvaluator --> EvaluationContext : uses
+RuleEvaluator --> EvaluationResult : creates
+
+Condition <|-- DeviceDataCondition
+Condition <|-- TimeCondition
+Condition <|-- EventCondition
+Condition <|-- CompositeCondition
+
+CompositeCondition --> Condition : contains
+
+DeviceDataCondition --> ComparisonOperator : uses
+DeviceDataCondition --> TimeRange : uses
+DeviceDataCondition --> DataProvider : uses
+
+CompositeCondition --> LogicalOperator : uses
+
+EvaluationContext --> DeviceData : contains
+EvaluationContext --> Event : contains
+
+DataProvider <|.. DataHubProvider
+DeviceDataCondition ..> DataHubProvider : uses
+
+note right of RuleEvaluator
+    Основной класс для оценки условий сценариев.
+    Поддерживает сложные логические выражения
+    с использованием AND, OR, NOT.
+end note
+
+note right of CompositeCondition
+    Позволяет создавать сложные условия:
+    (temperature > 25 AND time == "18:00") OR event == "motion_detected"
+end note
+
+note right of DeviceDataCondition
+    Условие на основе данных устройства.
+    Пример: temperature > 25.5
+    или light_status == "on"
+end note
+
+@enduml

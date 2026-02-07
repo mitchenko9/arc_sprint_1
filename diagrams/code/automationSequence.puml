@@ -1,0 +1,113 @@
+@startuml
+title Диаграмма последовательности: Выполнение сценария автоматизации
+
+participant "Брокер событий" as Broker
+participant "Trigger Manager" as TriggerMgr
+participant "Scenario Engine" as Engine
+participant "Scenario Repository" as Repository
+participant "Rule Evaluator" as RuleEval
+participant "Data Hub\nService" as DataHub
+participant "Action Executor" as ActionExec
+participant "Device Control\nService" as DeviceControl
+participant "Scheduler" as Scheduler
+
+== Триггер по событию ==
+
+Broker -> TriggerMgr: Event: "device.temperature.changed"\n{deviceId: "123", value: 25.5}
+activate TriggerMgr
+
+TriggerMgr -> Repository: findScenariosByTrigger(eventType)
+activate Repository
+Repository --> TriggerMgr: List<Scenario> [scenario1, scenario2]
+deactivate Repository
+
+loop Для каждого сценария
+    TriggerMgr -> Engine: executeScenario(scenarioId, triggerEvent)
+    activate Engine
+    
+    Engine -> Repository: loadScenario(scenarioId)
+    activate Repository
+    Repository --> Engine: Scenario {\n  id, name,\n  triggers: [...],\n  conditions: [...],\n  actions: [...]\n}
+    deactivate Repository
+    
+    Engine -> RuleEval: evaluateConditions(scenario.conditions, triggerEvent)
+    activate RuleEval
+    
+    loop Для каждого условия
+        alt Условие требует данных устройства
+            RuleEval -> DataHub: getDeviceData(deviceId, metric, timeRange)
+            activate DataHub
+            DataHub --> RuleEval: DeviceData {value, timestamp}
+            deactivate DataHub
+        end
+        
+        RuleEval -> RuleEval: evaluateCondition(condition, data)
+        note right: Проверка операторов:\n>, <, ==, !=, AND, OR
+    end
+    
+    RuleEval --> Engine: EvaluationResult {allConditionsMet: true/false}
+    deactivate RuleEval
+    
+    alt Все условия выполнены
+        Engine -> ActionExec: executeActions(scenario.actions)
+        activate ActionExec
+        
+        loop Для каждого действия
+            ActionExec -> DeviceControl: sendCommand(deviceId, action.command)
+            activate DeviceControl
+            DeviceControl --> ActionExec: Command accepted
+            deactivate DeviceControl
+        end
+        
+        ActionExec --> Engine: Actions executed
+        deactivate ActionExec
+        
+        Engine -> Repository: updateScenarioExecution(scenarioId, timestamp)
+        activate Repository
+        Repository --> Engine: Updated
+        deactivate Repository
+    else Условия не выполнены
+        Engine -> Engine: Skip actions
+        note right: Сценарий не выполняется,\nусловия не соблюдены
+    end
+    
+    deactivate Engine
+end
+
+deactivate TriggerMgr
+
+== Триггер по расписанию ==
+
+Scheduler -> Engine: executeScheduledScenario(scenarioId)
+activate Engine
+
+Engine -> Repository: loadScenario(scenarioId)
+activate Repository
+Repository --> Engine: Scenario
+deactivate Repository
+
+Engine -> RuleEval: evaluateConditions(scenario.conditions, null)
+activate RuleEval
+
+RuleEval -> DataHub: getDeviceData(...)
+activate DataHub
+DataHub --> RuleEval: DeviceData
+deactivate DataHub
+
+RuleEval --> Engine: EvaluationResult
+deactivate RuleEval
+
+alt Условия выполнены
+    Engine -> ActionExec: executeActions(scenario.actions)
+    activate ActionExec
+    ActionExec -> DeviceControl: sendCommand(...)
+    activate DeviceControl
+    DeviceControl --> ActionExec: Command accepted
+    deactivate DeviceControl
+    ActionExec --> Engine: Actions executed
+    deactivate ActionExec
+end
+
+deactivate Engine
+
+@enduml

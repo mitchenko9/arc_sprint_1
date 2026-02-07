@@ -1,0 +1,35 @@
+@startuml
+!include ../template/templateComponentC4.puml
+
+title Диаграмма компонентов: Сервис менеджмента устройств
+
+Container_Boundary(deviceManagement, "Сервис менеджмента устройств") {
+    Component(deviceAPI, "Device Management API", "REST API", "Предоставляет HTTP endpoints для регистрации, обновления и удаления устройств")
+    Component(deviceController, "Device Controller", "Business Logic", "Обрабатывает бизнес-логику управления устройствами: валидация, проверка прав доступа (в т.ч. по членству в семейной группе)")
+    Component(deviceRepository, "Device Repository", "Data Access", "Абстракция для работы с базой данных устройств")
+    Component(deviceValidator, "Device Validator", "Validation", "Валидация данных устройств: проверка типов, протоколов, совместимости")
+    Component(deviceRegistry, "Device Registry", "State Management", "Управление реестром устройств: регистрация, поиск, кэширование метаданных")
+    ComponentDb(deviceDatabase, "Device Database", "PostgreSQL", "Хранит метаданные устройств: ID, тип, местоположение, статус подключения, настройки")
+}
+
+Container_Ext(apiGateway, "API-шлюз", "Единая точка входа для всех запросов")
+Container_Ext(userManagement, "Сервис управления пользователями", "Группы и участники, проверка доступа к домам")
+Container_Ext(deviceControl, "Сервис управления устройствами", "Управление командами устройств")
+Container_Ext(integration, "Сервис интеграции", "Интеграция с устройствами партнеров")
+Container_Ext(signalBroker, "Брокер событий", "Асинхронная коммуникация")
+
+Rel(apiGateway, deviceAPI, "HTTP/REST", "Запросы на регистрацию, обновление, удаление устройств")
+
+Rel(deviceAPI, deviceController, "Вызов методов", "Передача запросов на обработку")
+Rel(deviceController, deviceValidator, "Валидация", "Проверка корректности данных устройства")
+Rel(deviceController, deviceRegistry, "Регистрация/поиск", "Работа с реестром устройств")
+Rel(deviceController, deviceRepository, "CRUD операции", "Сохранение и получение данных")
+Rel(deviceRepository, deviceDatabase, "SQL запросы", "Чтение и запись данных устройств")
+Rel(deviceRegistry, deviceDatabase, "Кэширование", "Кэширование метаданных устройств")
+
+Rel(deviceController, userManagement, "HTTP/REST", "Проверка доступа к домам/устройствам по членству в семейной группе")
+Rel(deviceController, deviceControl, "HTTP/REST", "Уведомление о регистрации нового устройства")
+Rel(deviceController, signalBroker, "Publish events", "Публикация событий: device.registered, device.updated, device.deleted")
+Rel(integration, deviceRegistry, "HTTP/REST", "Запрос информации об устройстве для интеграции")
+
+@enduml

@@ -1,0 +1,38 @@
+@startuml
+!include ../template/templateComponentC4.puml
+
+title Диаграмма компонентов: Сервис автоматизации сценариев
+
+Container_Boundary(automation, "Сервис автоматизации сценариев") {
+    Component(automationAPI, "Automation API", "REST API", "Предоставляет HTTP endpoints для создания, обновления, удаления и запуска сценариев")
+    Component(scenarioEngine, "Scenario Engine", "Business Logic", "Движок выполнения сценариев: интерпретация правил, выполнение действий")
+    Component(triggerManager, "Trigger Manager", "Event Processing", "Обработка триггеров: подписка на события, проверка условий")
+    Component(ruleEvaluator, "Rule Evaluator", "Logic Processing", "Оценка условий сценариев: логические операторы, сравнения, временные условия")
+    Component(actionExecutor, "Action Executor", "Command Execution", "Выполнение действий сценариев: отправка команд устройствам")
+    Component(scenarioRepository, "Scenario Repository", "Data Access", "Абстракция для работы с базой данных сценариев")
+    Component(scheduler, "Scheduler", "Time Management", "Планирование выполнения сценариев по расписанию")
+    ComponentDb(automationDatabase, "Automation Database", "PostgreSQL", "Хранит сценарии, правила, триггеры и их настройки")
+}
+
+Container_Ext(apiGateway, "API-шлюз", "Единая точка входа")
+Container_Ext(deviceControl, "Сервис управления устройствами", "Выполнение команд")
+Container_Ext(dataHub, "Сервис данных устройств", "Получение данных для условий")
+Container_Ext(signalBroker, "Брокер событий", "Асинхронная коммуникация")
+
+Rel(apiGateway, automationAPI, "HTTP/REST", "Управление сценариями: создание, обновление, удаление")
+
+Rel(automationAPI, scenarioRepository, "CRUD операции", "Сохранение и получение сценариев")
+Rel(scenarioRepository, automationDatabase, "SQL запросы", "Чтение и запись сценариев")
+Rel(scenarioEngine, scenarioRepository, "Загрузка сценариев", "Получение активных сценариев")
+Rel(scenarioEngine, triggerManager, "Обработка триггеров", "Проверка условий запуска")
+Rel(scenarioEngine, ruleEvaluator, "Оценка условий", "Проверка условий выполнения действий")
+Rel(scenarioEngine, actionExecutor, "Выполнение действий", "Запуск действий сценариев")
+Rel(triggerManager, signalBroker, "Subscribe events", "Подписка на события для триггеров")
+Rel(triggerManager, scheduler, "Планирование", "Настройка временных триггеров")
+Rel(scheduler, scenarioEngine, "Запуск по расписанию", "Запуск сценариев по времени")
+Rel(ruleEvaluator, dataHub, "HTTP/REST", "Запрос данных устройств для оценки условий")
+Rel(actionExecutor, deviceControl, "HTTP/REST", "Отправка команд управления устройствами")
+
+Rel(signalBroker, triggerManager, "Publish events", "Доставка событий для триггеров сценариев")
+
+@enduml

@@ -1,0 +1,60 @@
+@startuml
+!include ../template/templateContainerC4.puml
+
+title Контейнерная диаграмма целевой микросервисной архитектуры
+
+Person(user, "Пользователь", "Владелец или член семейной группы; управляет устройствами, сценариями и просматривает телеметрию в рамках доступных домов группы")
+
+Container_Boundary(smartHomeSystem, "Экосистема умного дома") {
+    Container(mobileApp, "Мобильное приложение", "React Native", "Пользователь взаимодействует с системой через мобильное приложение")
+    Container(apiGateway, "API-шлюз", "Go", "Единая точка входа для всех клиентских запросов. Обеспечивает аутентификацию, авторизацию и маршрутизацию")
+    Container(userManagement, "Сервис управления пользователями", "Node.js", "Управление подписками, аутентификацией, семейными группами и участниками (owner/member)")
+    Container(deviceManagement, "Сервис менеджмента устройств", "Node.js", "Регистрация и удаление устройств. Список устройств, доступных пользователю (в т.ч. через членство в семейной группе)")
+    Container(deviceControl, "Сервис управления устройствами", "Go", "Вкл/выкл устройств: отопление, свет, ворота и другое")
+    Container(dataHub, "Сервис данных устройств", "Python", "Сбор, хранение и предоставление данных от устройств")
+    Container(automation, "Сервис автоматизации сценариев", "Go", "Создание и выполнение сценариев автоматизации для всех устройств")
+    Container(integration, "Сервис интеграции партнерских устройств", "Node.js", "Интеграция с устройствами партнеров по стандартным протоколам")
+    Container(notification, "Сервис нотификаций", "Node.js", "Отправка уведомлений пользователям")
+    ContainerQueue(signalBroker, "Сервис обмена событиями", "RabbitMQ", "Асинхронная обработка событий между микросервисами")
+}
+
+ContainerDb_Ext(userDatabase, "БД пользователей, подписок и групп", "PostgreSQL", "Пользователи, подписки, семейные группы и участники (роли owner/member)")
+ContainerDb_Ext(deviceDatabase, "БД устройств", "PostgreSQL", "Тут хранятся данные о подлюченных устройствах")
+ContainerDb_Ext(dataDB, "БД данных устройств", "PostgreSQL", "Хранилище полученных данных от устройств")
+ContainerDb_Ext(automationDatabase, "БД сценариев и правил", "PostgreSQL", "Тут хранятся сценарии автоматизации")
+
+Container_Ext(partnerDevices, "Устройства партнеров", "MQTT/HTTP", "Умные устройства сторонних производителей, подключенные по стандартным протоколам к системе")
+Container_Ext(temperature, "Внешний сервис температуры", "Node.js", "Внешний сервис для получения данных о температуре")
+
+Rel(user, mobileApp, "пользователь взаимодействует с системой по средствам мобильного приложения")
+Rel(mobileApp, apiGateway, "Управляет устройствами, настраивает сценарии, просматривает данные с устройств")
+
+Rel(apiGateway, userManagement, "Проверка аутентификации и авторизации")
+Rel(apiGateway, deviceManagement, "Получение списка устройств (с учётом доступа по группам)")
+Rel(apiGateway, deviceControl, "Отправка команд управления устройствами")
+Rel(apiGateway, dataHub, "Запрос данных")
+Rel(apiGateway, automation, "Управление сценариями")
+
+Rel(deviceControl, deviceManagement, "Проверка существования и прав доступа к устройству")
+Rel(deviceManagement, userManagement, "Проверка доступа к домам/устройствам по членству в семейной группе")
+Rel(automation, deviceControl, "Выполнение команд в сценариях")
+Rel(automation, dataHub, "Чтение данных для условий сценариев")
+
+Rel(deviceControl, signalBroker, "Публикует события о выполнении команд")
+Rel(dataHub, signalBroker, "Публикует события")
+Rel(signalBroker, automation, "Доставляет события для триггеров сценариев")
+Rel(signalBroker, notification, "Доставляет события для уведомлений")
+Rel(integration, signalBroker, "Публикует телеметрию от устройств партнеров")
+Rel(signalBroker, dataHub, "Доставляет телеметрию для сохранения")
+
+Rel(integration, partnerDevices, "Подключение и управление устройствами партнеров")
+Rel(dataHub, temperature, "Получение данных о температуре в рантайме")
+
+Rel(userManagement, userDatabase, "Читает и записывает данные пользователей")
+Rel(deviceManagement, deviceDatabase, "Читает и записывает данные об устройствах")
+Rel(dataHub, dataDB, "Читает и записывает телеметрию")
+Rel(automation, automationDatabase, "Читает и записывает сценарии")
+
+Rel(notification, user, "Отправляет уведомления")
+
+@enduml

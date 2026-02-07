@@ -1,0 +1,123 @@
+@startuml er-smarthome
+!theme plain
+skinparam linetype ortho
+skinparam backgroundColor #FEFEFE
+
+title ER-диаграмма: Экосистема умного дома (SaaS)
+
+entity "User" as user {
+  * id : PK, UUID
+  --
+  * email : VARCHAR(255)
+  * password_hash : VARCHAR(255)
+  name : VARCHAR(100)
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+entity "Subscription" as subscription {
+  * id : PK, UUID
+  --
+  * user_id : FK → User
+  * plan : VARCHAR(50)
+  * started_at : TIMESTAMP
+  expires_at : TIMESTAMP
+}
+
+entity "FamilyGroup" as family_group {
+  * id : PK, UUID
+  --
+  * name : VARCHAR(100)
+  * owner_id : FK → User
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+entity "FamilyGroupMember" as group_member {
+  * group_id : PK, FK → FamilyGroup
+  * user_id : PK, FK → User
+  --
+  * role : VARCHAR(20)
+  joined_at : TIMESTAMP
+}
+
+entity "House" as house {
+  * id : PK, UUID
+  --
+  * family_group_id : FK → FamilyGroup
+  * name : VARCHAR(100)
+  address : VARCHAR(255)
+  timezone : VARCHAR(50)
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+entity "DeviceType" as device_type {
+  * id : PK, UUID
+  --
+  * name : VARCHAR(100)
+  * category : VARCHAR(50)
+  * protocol : VARCHAR(20)
+  description : TEXT
+  is_partner : BOOLEAN
+}
+
+entity "Device" as device {
+  * id : PK, UUID
+  --
+  * house_id : FK → House
+  * device_type_id : FK → DeviceType
+  * serial_number : VARCHAR(100)
+  * name : VARCHAR(100)
+  * status : VARCHAR(20)
+  location : VARCHAR(100)
+  settings : JSONB
+  registered_at : TIMESTAMP
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+entity "TelemetryData" as telemetry {
+  * id : PK, BIGSERIAL
+  --
+  * device_id : FK → Device
+  * metric : VARCHAR(100)
+  * value : NUMERIC/JSONB
+  unit : VARCHAR(20)
+  * recorded_at : TIMESTAMP
+}
+
+entity "Scenario" as scenario {
+  * id : PK, UUID
+  --
+  * house_id : FK → House
+  * name : VARCHAR(100)
+  description : TEXT
+  * is_enabled : BOOLEAN
+  triggers : JSONB
+  conditions : JSONB
+  actions : JSONB
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+' Связи: подписка и пользователь
+user ||--o{ subscription : "имеет"
+
+' Семейная группа: владелец и участники
+user ||--o{ family_group : "владеет (owner)"
+user ||--o{ group_member : "участвует"
+family_group ||--o{ group_member : "содержит участников"
+
+' Дом принадлежит группе — доступ у всех участников группы
+family_group ||--o{ house : "содержит дома"
+
+' Устройства и телеметрия
+house ||--o{ device : "содержит"
+device_type ||--o{ device : "тип"
+device ||--o{ telemetry : "генерирует"
+
+' Сценарии привязаны к дому (видят все члены группы)
+house ||--o{ scenario : "имеет сценарии"
+
+@enduml
